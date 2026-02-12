@@ -973,189 +973,189 @@ Please strictly follow this JSON format for output, this is a complete [Decision
             )
     
     def _format_prompt(
-    self, 
-    context: Dict[str, Any], 
-    name: str,
-    news_context: Optional[str] = None
-) -> str:
-    """
-    Format analysis prompt (Decision Dashboard v2.0)
-    
-    Includes: technical indicators, real-time quotes (volume ratio/turnover rate), 
-    chip distribution, trend analysis, news
-    
-    Args:
-        context: Technical data context (including enhanced data)
-        name: Stock name (default value, may be overridden by context)
-        news_context: Pre-searched news content
-    """
-    code = context.get('code', 'Unknown')
-    
-    # Prioritize stock name from context (obtained from realtime_quote)
-    stock_name = context.get('stock_name', name)
-    if not stock_name or stock_name == f'Stock{code}':
-        stock_name = STOCK_NAME_MAP.get(code, f'Stock{code}')
+        self, 
+        context: Dict[str, Any], 
+        name: str,
+        news_context: Optional[str] = None
+    ) -> str:
+        """
+        Format analysis prompt (Decision Dashboard v2.0)
         
-    today = context.get('today', {})
+        Includes: technical indicators, real-time quotes (volume ratio/turnover rate), 
+        chip distribution, trend analysis, news
+        
+        Args:
+            context: Technical data context (including enhanced data)
+            name: Stock name (default value, may be overridden by context)
+            news_context: Pre-searched news content
+        """
+        code = context.get('code', 'Unknown')
+        
+        # Prioritize stock name from context (obtained from realtime_quote)
+        stock_name = context.get('stock_name', name)
+        if not stock_name or stock_name == f'Stock{code}':
+            stock_name = STOCK_NAME_MAP.get(code, f'Stock{code}')
+            
+        today = context.get('today', {})
+        
+        # ========== Build Decision Dashboard format input ==========
+        prompt = f"""# Decision Dashboard Analysis Request
     
-    # ========== Build Decision Dashboard format input ==========
-    prompt = f"""# Decision Dashboard Analysis Request
-
-## 📊 Stock Basic Information
-| Item | Data |
-|------|------|
-| Stock Code | **{code}** |
-| Stock Name | **{stock_name}** |
-| Analysis Date | {context.get('date', 'Unknown')} |
-
----
-
-## 📈 Technical Data
-
-### Today's Market
-| Indicator | Value |
-|------|------|
-| Close Price | {today.get('close', 'N/A')} yuan |
-| Open Price | {today.get('open', 'N/A')} yuan |
-| High Price | {today.get('high', 'N/A')} yuan |
-| Low Price | {today.get('low', 'N/A')} yuan |
-| Price Change % | {today.get('pct_chg', 'N/A')}% |
-| Volume | {self._format_volume(today.get('volume'))} |
-| Amount | {self._format_amount(today.get('amount'))} |
-
-### Moving Average System (Key Judgment Indicators)
-| MA | Value | Description |
-|------|------|------|
-| MA5 | {today.get('ma5', 'N/A')} | Short-term trend line |
-| MA10 | {today.get('ma10', 'N/A')} | Medium-short term trend line |
-| MA20 | {today.get('ma20', 'N/A')} | Medium-term trend line |
-| MA Pattern | {context.get('ma_status', 'Unknown')} | Bullish/Bearish/Entangled |
-"""
+    ## 📊 Stock Basic Information
+    | Item | Data |
+    |------|------|
+    | Stock Code | **{code}** |
+    | Stock Name | **{stock_name}** |
+    | Analysis Date | {context.get('date', 'Unknown')} |
     
-    # Add real-time market data (volume ratio, turnover rate, etc.)
-    if 'realtime' in context:
-        rt = context['realtime']
-        prompt += f"""
-### Real-time Market Enhanced Data
-| Indicator | Value | Interpretation |
-|------|------|------|
-| Current Price | {rt.get('price', 'N/A')} yuan | |
-| **Volume Ratio** | **{rt.get('volume_ratio', 'N/A')}** | {rt.get('volume_ratio_desc', '')} |
-| **Turnover Rate** | **{rt.get('turnover_rate', 'N/A')}%** | |
-| P/E Ratio (TTM) | {rt.get('pe_ratio', 'N/A')} | |
-| P/B Ratio | {rt.get('pb_ratio', 'N/A')} | |
-| Total Market Cap | {self._format_amount(rt.get('total_mv'))} | |
-| Circulating Market Cap | {self._format_amount(rt.get('circ_mv'))} | |
-| 60-day Change | {rt.get('change_60d', 'N/A')}% | Medium-term performance |
-"""
+    ---
     
-    # Add chip distribution data
-    if 'chip' in context:
-        chip = context['chip']
-        profit_ratio = chip.get('profit_ratio', 0)
-        prompt += f"""
-### Chip Distribution Data (Efficiency Indicators)
-| Indicator | Value | Health Standard |
-|------|------|----------|
-| **Profit Ratio** | **{profit_ratio:.1%}** | Alert when 70-90% |
-| Average Cost | {chip.get('avg_cost', 'N/A')} yuan | Current price should be 5-15% higher |
-| 90% Chip Concentration | {chip.get('concentration_90', 0):.2%} | <15% indicates concentration |
-| 70% Chip Concentration | {chip.get('concentration_70', 0):.2%} | |
-| Chip Status | {chip.get('chip_status', 'Unknown')} | |
-"""
+    ## 📈 Technical Data
     
-    # Add trend analysis results (predictions based on trading philosophy)
-    if 'trend_analysis' in context:
-        trend = context['trend_analysis']
-        bias_warning = "🚨 Over 5%, DO NOT chase high!" if trend.get('bias_ma5', 0) > 5 else "✅ Safe range"
-        prompt += f"""
-### Trend Analysis Prediction (Based on Trading Philosophy)
-| Indicator | Value | Assessment |
-|------|------|------|
-| Trend Status | {trend.get('trend_status', 'Unknown')} | |
-| MA Alignment | {trend.get('ma_alignment', 'Unknown')} | MA5>MA10>MA20 is bullish |
-| Trend Strength | {trend.get('trend_strength', 0)}/100 | |
-| **Deviation (MA5)** | **{trend.get('bias_ma5', 0):+.2f}%** | {bias_warning} |
-| Deviation (MA10) | {trend.get('bias_ma10', 0):+.2f}% | |
-| Volume Status | {trend.get('volume_status', 'Unknown')} | {trend.get('volume_trend', '')} |
-| System Signal | {trend.get('buy_signal', 'Unknown')} | |
-| System Score | {trend.get('signal_score', 0)}/100 | |
-
-#### System Analysis Rationale
-**Buy Reasons**:
-{chr(10).join('- ' + r for r in trend.get('signal_reasons', ['None'])) if trend.get('signal_reasons') else '- None'}
-
-**Risk Factors**:
-{chr(10).join('- ' + r for r in trend.get('risk_factors', ['None'])) if trend.get('risk_factors') else '- None'}
-"""
+    ### Today's Market
+    | Indicator | Value |
+    |------|------|
+    | Close Price | {today.get('close', 'N/A')} yuan |
+    | Open Price | {today.get('open', 'N/A')} yuan |
+    | High Price | {today.get('high', 'N/A')} yuan |
+    | Low Price | {today.get('low', 'N/A')} yuan |
+    | Price Change % | {today.get('pct_chg', 'N/A')}% |
+    | Volume | {self._format_volume(today.get('volume'))} |
+    | Amount | {self._format_amount(today.get('amount'))} |
     
-    # Add yesterday's comparison data
-    if 'yesterday' in context:
-        volume_change = context.get('volume_change_ratio', 'N/A')
-        prompt += f"""
-### Price-Volume Changes
-- Volume change vs yesterday: {volume_change}x
-- Price change vs yesterday: {context.get('price_change_ratio', 'N/A')}%
-"""
+    ### Moving Average System (Key Judgment Indicators)
+    | MA | Value | Description |
+    |------|------|------|
+    | MA5 | {today.get('ma5', 'N/A')} | Short-term trend line |
+    | MA10 | {today.get('ma10', 'N/A')} | Medium-short term trend line |
+    | MA20 | {today.get('ma20', 'N/A')} | Medium-term trend line |
+    | MA Pattern | {context.get('ma_status', 'Unknown')} | Bullish/Bearish/Entangled |
+    """
+        
+        # Add real-time market data (volume ratio, turnover rate, etc.)
+        if 'realtime' in context:
+            rt = context['realtime']
+            prompt += f"""
+    ### Real-time Market Enhanced Data
+    | Indicator | Value | Interpretation |
+    |------|------|------|
+    | Current Price | {rt.get('price', 'N/A')} yuan | |
+    | **Volume Ratio** | **{rt.get('volume_ratio', 'N/A')}** | {rt.get('volume_ratio_desc', '')} |
+    | **Turnover Rate** | **{rt.get('turnover_rate', 'N/A')}%** | |
+    | P/E Ratio (TTM) | {rt.get('pe_ratio', 'N/A')} | |
+    | P/B Ratio | {rt.get('pb_ratio', 'N/A')} | |
+    | Total Market Cap | {self._format_amount(rt.get('total_mv'))} | |
+    | Circulating Market Cap | {self._format_amount(rt.get('circ_mv'))} | |
+    | 60-day Change | {rt.get('change_60d', 'N/A')}% | Medium-term performance |
+    """
+        
+        # Add chip distribution data
+        if 'chip' in context:
+            chip = context['chip']
+            profit_ratio = chip.get('profit_ratio', 0)
+            prompt += f"""
+    ### Chip Distribution Data (Efficiency Indicators)
+    | Indicator | Value | Health Standard |
+    |------|------|----------|
+    | **Profit Ratio** | **{profit_ratio:.1%}** | Alert when 70-90% |
+    | Average Cost | {chip.get('avg_cost', 'N/A')} yuan | Current price should be 5-15% higher |
+    | 90% Chip Concentration | {chip.get('concentration_90', 0):.2%} | <15% indicates concentration |
+    | 70% Chip Concentration | {chip.get('concentration_70', 0):.2%} | |
+    | Chip Status | {chip.get('chip_status', 'Unknown')} | |
+    """
+        
+        # Add trend analysis results (predictions based on trading philosophy)
+        if 'trend_analysis' in context:
+            trend = context['trend_analysis']
+            bias_warning = "🚨 Over 5%, DO NOT chase high!" if trend.get('bias_ma5', 0) > 5 else "✅ Safe range"
+            prompt += f"""
+    ### Trend Analysis Prediction (Based on Trading Philosophy)
+    | Indicator | Value | Assessment |
+    |------|------|------|
+    | Trend Status | {trend.get('trend_status', 'Unknown')} | |
+    | MA Alignment | {trend.get('ma_alignment', 'Unknown')} | MA5>MA10>MA20 is bullish |
+    | Trend Strength | {trend.get('trend_strength', 0)}/100 | |
+    | **Deviation (MA5)** | **{trend.get('bias_ma5', 0):+.2f}%** | {bias_warning} |
+    | Deviation (MA10) | {trend.get('bias_ma10', 0):+.2f}% | |
+    | Volume Status | {trend.get('volume_status', 'Unknown')} | {trend.get('volume_trend', '')} |
+    | System Signal | {trend.get('buy_signal', 'Unknown')} | |
+    | System Score | {trend.get('signal_score', 0)}/100 | |
     
-    # Add news search results (key section)
-    prompt += """
----
-
-## 📰 Sentiment Intelligence
-"""
-    if news_context:
-        prompt += f"""
-Below are news search results for **{stock_name}({code})** from the past 7 days. Please focus on extracting:
-1. 🚨 **Risk Alerts**: Share reductions, penalties, negative news
-2. 🎯 **Positive Catalysts**: Performance, contracts, policies
-3. 📊 **Earnings Expectations**: Annual report forecasts, performance previews
-```
-{news_context}
-```
-"""
-    else:
+    #### System Analysis Rationale
+    **Buy Reasons**:
+    {chr(10).join('- ' + r for r in trend.get('signal_reasons', ['None'])) if trend.get('signal_reasons') else '- None'}
+    
+    **Risk Factors**:
+    {chr(10).join('- ' + r for r in trend.get('risk_factors', ['None'])) if trend.get('risk_factors') else '- None'}
+    """
+        
+        # Add yesterday's comparison data
+        if 'yesterday' in context:
+            volume_change = context.get('volume_change_ratio', 'N/A')
+            prompt += f"""
+    ### Price-Volume Changes
+    - Volume change vs yesterday: {volume_change}x
+    - Price change vs yesterday: {context.get('price_change_ratio', 'N/A')}%
+    """
+        
+        # Add news search results (key section)
         prompt += """
-No recent news found for this stock. Please analyze mainly based on technical data.
-"""
-
-    # Inject missing data warning
-    if context.get('data_missing'):
-        prompt += """
-⚠️ **Data Missing Warning**
-Due to API limitations, complete real-time quotes and technical indicator data cannot be obtained.
-Please **ignore N/A data in the tables above** and focus on **【📰 Sentiment Intelligence】** news for fundamental and sentiment analysis.
-When answering technical questions (such as MAs, deviation), please directly state "Data missing, cannot assess" and **DO NOT fabricate data**.
-"""
-
-    # Clear output requirements
-    prompt += f"""
----
-
-## ✅ Analysis Task
-
-Please generate a 【Decision Dashboard】 for **{stock_name}({code})**, strictly in JSON format.
-
-### ⚠️ Important: Stock Name Confirmation
-If the stock name shown above is "Stock{code}" or incorrect, please **clearly output the correct full Chinese name** at the beginning of your analysis.
-
-### Key Focus (Must answer clearly):
-1. ❓ Does it meet the MA5>MA10>MA20 bullish alignment?
-2. ❓ Is the current deviation within safe range (<5%)? — Must mark "DO NOT chase high" if over 5%
-3. ❓ Is volume supporting (shrinking pullback/expanding breakout)?
-4. ❓ Is the chip structure healthy?
-5. ❓ Any major negative news? (Share reductions, penalties, earnings warnings, etc.)
-
-### Decision Dashboard Requirements:
-- **Stock Name**: Must output correct full Chinese name (e.g., "Kweichow Moutai" not "Stock600519")
-- **Core Conclusion**: One sentence stating buy/sell/wait
-- **Position Classification Advice**: What to do for those without positions vs those with positions
-- **Specific Entry Levels**: Buy price, stop-loss price, target price (accurate to cents)
-- **Checklist**: Mark each item with ✅/⚠️/❌
-
-Please output the complete Decision Dashboard in JSON format."""
-
-    return prompt
+    ---
+    
+    ## 📰 Sentiment Intelligence
+    """
+        if news_context:
+            prompt += f"""
+    Below are news search results for **{stock_name}({code})** from the past 7 days. Please focus on extracting:
+    1. 🚨 **Risk Alerts**: Share reductions, penalties, negative news
+    2. 🎯 **Positive Catalysts**: Performance, contracts, policies
+    3. 📊 **Earnings Expectations**: Annual report forecasts, performance previews
+    ```
+    {news_context}
+    ```
+    """
+        else:
+            prompt += """
+    No recent news found for this stock. Please analyze mainly based on technical data.
+    """
+    
+        # Inject missing data warning
+        if context.get('data_missing'):
+            prompt += """
+    ⚠️ **Data Missing Warning**
+    Due to API limitations, complete real-time quotes and technical indicator data cannot be obtained.
+    Please **ignore N/A data in the tables above** and focus on **【📰 Sentiment Intelligence】** news for fundamental and sentiment analysis.
+    When answering technical questions (such as MAs, deviation), please directly state "Data missing, cannot assess" and **DO NOT fabricate data**.
+    """
+    
+        # Clear output requirements
+        prompt += f"""
+    ---
+    
+    ## ✅ Analysis Task
+    
+    Please generate a 【Decision Dashboard】 for **{stock_name}({code})**, strictly in JSON format.
+    
+    ### ⚠️ Important: Stock Name Confirmation
+    If the stock name shown above is "Stock{code}" or incorrect, please **clearly output the correct full Chinese name** at the beginning of your analysis.
+    
+    ### Key Focus (Must answer clearly):
+    1. ❓ Does it meet the MA5>MA10>MA20 bullish alignment?
+    2. ❓ Is the current deviation within safe range (<5%)? — Must mark "DO NOT chase high" if over 5%
+    3. ❓ Is volume supporting (shrinking pullback/expanding breakout)?
+    4. ❓ Is the chip structure healthy?
+    5. ❓ Any major negative news? (Share reductions, penalties, earnings warnings, etc.)
+    
+    ### Decision Dashboard Requirements:
+    - **Stock Name**: Must output correct full Chinese name (e.g., "Kweichow Moutai" not "Stock600519")
+    - **Core Conclusion**: One sentence stating buy/sell/wait
+    - **Position Classification Advice**: What to do for those without positions vs those with positions
+    - **Specific Entry Levels**: Buy price, stop-loss price, target price (accurate to cents)
+    - **Checklist**: Mark each item with ✅/⚠️/❌
+    
+    Please output the complete Decision Dashboard in JSON format."""
+    
+        return prompt
     
     def _format_volume(self, volume: Optional[float]) -> str:
         """格式化成交量显示"""
