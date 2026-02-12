@@ -973,189 +973,189 @@ Please strictly follow this JSON format for output, this is a complete [Decision
             )
     
     def _format_prompt(
-        self, 
-        context: Dict[str, Any], 
-        name: str,
-        news_context: Optional[str] = None
-    ) -> str:
-        """
-        格式化分析提示词（决策仪表盘 v2.0）
+    self, 
+    context: Dict[str, Any], 
+    name: str,
+    news_context: Optional[str] = None
+) -> str:
+    """
+    Format analysis prompt (Decision Dashboard v2.0)
+    
+    Includes: technical indicators, real-time quotes (volume ratio/turnover rate), 
+    chip distribution, trend analysis, news
+    
+    Args:
+        context: Technical data context (including enhanced data)
+        name: Stock name (default value, may be overridden by context)
+        news_context: Pre-searched news content
+    """
+    code = context.get('code', 'Unknown')
+    
+    # Prioritize stock name from context (obtained from realtime_quote)
+    stock_name = context.get('stock_name', name)
+    if not stock_name or stock_name == f'Stock{code}':
+        stock_name = STOCK_NAME_MAP.get(code, f'Stock{code}')
         
-        包含：技术指标、实时行情（量比/换手率）、筹码分布、趋势分析、新闻
-        
-        Args:
-            context: 技术面数据上下文（包含增强数据）
-            name: 股票名称（默认值，可能被上下文覆盖）
-            news_context: 预先搜索的新闻内容
-        """
-        code = context.get('code', 'Unknown')
-        
-        # 优先使用上下文中的股票名称（从 realtime_quote 获取）
-        stock_name = context.get('stock_name', name)
-        if not stock_name or stock_name == f'股票{code}':
-            stock_name = STOCK_NAME_MAP.get(code, f'股票{code}')
-            
-        today = context.get('today', {})
-        
-        # ========== 构建决策仪表盘格式的输入 ==========
-        prompt = f"""# 决策仪表盘分析请求
+    today = context.get('today', {})
+    
+    # ========== Build Decision Dashboard format input ==========
+    prompt = f"""# Decision Dashboard Analysis Request
 
-## 📊 股票基础信息
-| 项目 | 数据 |
+## 📊 Stock Basic Information
+| Item | Data |
 |------|------|
-| 股票代码 | **{code}** |
-| 股票名称 | **{stock_name}** |
-| 分析日期 | {context.get('date', '未知')} |
+| Stock Code | **{code}** |
+| Stock Name | **{stock_name}** |
+| Analysis Date | {context.get('date', 'Unknown')} |
 
 ---
 
-## 📈 技术面数据
+## 📈 Technical Data
 
-### 今日行情
-| 指标 | 数值 |
+### Today's Market
+| Indicator | Value |
 |------|------|
-| 收盘价 | {today.get('close', 'N/A')} 元 |
-| 开盘价 | {today.get('open', 'N/A')} 元 |
-| 最高价 | {today.get('high', 'N/A')} 元 |
-| 最低价 | {today.get('low', 'N/A')} 元 |
-| 涨跌幅 | {today.get('pct_chg', 'N/A')}% |
-| 成交量 | {self._format_volume(today.get('volume'))} |
-| 成交额 | {self._format_amount(today.get('amount'))} |
+| Close Price | {today.get('close', 'N/A')} yuan |
+| Open Price | {today.get('open', 'N/A')} yuan |
+| High Price | {today.get('high', 'N/A')} yuan |
+| Low Price | {today.get('low', 'N/A')} yuan |
+| Price Change % | {today.get('pct_chg', 'N/A')}% |
+| Volume | {self._format_volume(today.get('volume'))} |
+| Amount | {self._format_amount(today.get('amount'))} |
 
-### 均线系统（关键判断指标）
-| 均线 | 数值 | 说明 |
+### Moving Average System (Key Judgment Indicators)
+| MA | Value | Description |
 |------|------|------|
-| MA5 | {today.get('ma5', 'N/A')} | 短期趋势线 |
-| MA10 | {today.get('ma10', 'N/A')} | 中短期趋势线 |
-| MA20 | {today.get('ma20', 'N/A')} | 中期趋势线 |
-| 均线形态 | {context.get('ma_status', '未知')} | 多头/空头/缠绕 |
+| MA5 | {today.get('ma5', 'N/A')} | Short-term trend line |
+| MA10 | {today.get('ma10', 'N/A')} | Medium-short term trend line |
+| MA20 | {today.get('ma20', 'N/A')} | Medium-term trend line |
+| MA Pattern | {context.get('ma_status', 'Unknown')} | Bullish/Bearish/Entangled |
 """
-        
-        # 添加实时行情数据（量比、换手率等）
-        if 'realtime' in context:
-            rt = context['realtime']
-            prompt += f"""
-### 实时行情增强数据
-| 指标 | 数值 | 解读 |
+    
+    # Add real-time market data (volume ratio, turnover rate, etc.)
+    if 'realtime' in context:
+        rt = context['realtime']
+        prompt += f"""
+### Real-time Market Enhanced Data
+| Indicator | Value | Interpretation |
 |------|------|------|
-| 当前价格 | {rt.get('price', 'N/A')} 元 | |
-| **量比** | **{rt.get('volume_ratio', 'N/A')}** | {rt.get('volume_ratio_desc', '')} |
-| **换手率** | **{rt.get('turnover_rate', 'N/A')}%** | |
-| 市盈率(动态) | {rt.get('pe_ratio', 'N/A')} | |
-| 市净率 | {rt.get('pb_ratio', 'N/A')} | |
-| 总市值 | {self._format_amount(rt.get('total_mv'))} | |
-| 流通市值 | {self._format_amount(rt.get('circ_mv'))} | |
-| 60日涨跌幅 | {rt.get('change_60d', 'N/A')}% | 中期表现 |
+| Current Price | {rt.get('price', 'N/A')} yuan | |
+| **Volume Ratio** | **{rt.get('volume_ratio', 'N/A')}** | {rt.get('volume_ratio_desc', '')} |
+| **Turnover Rate** | **{rt.get('turnover_rate', 'N/A')}%** | |
+| P/E Ratio (TTM) | {rt.get('pe_ratio', 'N/A')} | |
+| P/B Ratio | {rt.get('pb_ratio', 'N/A')} | |
+| Total Market Cap | {self._format_amount(rt.get('total_mv'))} | |
+| Circulating Market Cap | {self._format_amount(rt.get('circ_mv'))} | |
+| 60-day Change | {rt.get('change_60d', 'N/A')}% | Medium-term performance |
 """
-        
-        # 添加筹码分布数据
-        if 'chip' in context:
-            chip = context['chip']
-            profit_ratio = chip.get('profit_ratio', 0)
-            prompt += f"""
-### 筹码分布数据（效率指标）
-| 指标 | 数值 | 健康标准 |
+    
+    # Add chip distribution data
+    if 'chip' in context:
+        chip = context['chip']
+        profit_ratio = chip.get('profit_ratio', 0)
+        prompt += f"""
+### Chip Distribution Data (Efficiency Indicators)
+| Indicator | Value | Health Standard |
 |------|------|----------|
-| **获利比例** | **{profit_ratio:.1%}** | 70-90%时警惕 |
-| 平均成本 | {chip.get('avg_cost', 'N/A')} 元 | 现价应高于5-15% |
-| 90%筹码集中度 | {chip.get('concentration_90', 0):.2%} | <15%为集中 |
-| 70%筹码集中度 | {chip.get('concentration_70', 0):.2%} | |
-| 筹码状态 | {chip.get('chip_status', '未知')} | |
+| **Profit Ratio** | **{profit_ratio:.1%}** | Alert when 70-90% |
+| Average Cost | {chip.get('avg_cost', 'N/A')} yuan | Current price should be 5-15% higher |
+| 90% Chip Concentration | {chip.get('concentration_90', 0):.2%} | <15% indicates concentration |
+| 70% Chip Concentration | {chip.get('concentration_70', 0):.2%} | |
+| Chip Status | {chip.get('chip_status', 'Unknown')} | |
 """
-        
-        # 添加趋势分析结果（基于交易理念的预判）
-        if 'trend_analysis' in context:
-            trend = context['trend_analysis']
-            bias_warning = "🚨 超过5%，严禁追高！" if trend.get('bias_ma5', 0) > 5 else "✅ 安全范围"
-            prompt += f"""
-### 趋势分析预判（基于交易理念）
-| 指标 | 数值 | 判定 |
+    
+    # Add trend analysis results (predictions based on trading philosophy)
+    if 'trend_analysis' in context:
+        trend = context['trend_analysis']
+        bias_warning = "🚨 Over 5%, DO NOT chase high!" if trend.get('bias_ma5', 0) > 5 else "✅ Safe range"
+        prompt += f"""
+### Trend Analysis Prediction (Based on Trading Philosophy)
+| Indicator | Value | Assessment |
 |------|------|------|
-| 趋势状态 | {trend.get('trend_status', '未知')} | |
-| 均线排列 | {trend.get('ma_alignment', '未知')} | MA5>MA10>MA20为多头 |
-| 趋势强度 | {trend.get('trend_strength', 0)}/100 | |
-| **乖离率(MA5)** | **{trend.get('bias_ma5', 0):+.2f}%** | {bias_warning} |
-| 乖离率(MA10) | {trend.get('bias_ma10', 0):+.2f}% | |
-| 量能状态 | {trend.get('volume_status', '未知')} | {trend.get('volume_trend', '')} |
-| 系统信号 | {trend.get('buy_signal', '未知')} | |
-| 系统评分 | {trend.get('signal_score', 0)}/100 | |
+| Trend Status | {trend.get('trend_status', 'Unknown')} | |
+| MA Alignment | {trend.get('ma_alignment', 'Unknown')} | MA5>MA10>MA20 is bullish |
+| Trend Strength | {trend.get('trend_strength', 0)}/100 | |
+| **Deviation (MA5)** | **{trend.get('bias_ma5', 0):+.2f}%** | {bias_warning} |
+| Deviation (MA10) | {trend.get('bias_ma10', 0):+.2f}% | |
+| Volume Status | {trend.get('volume_status', 'Unknown')} | {trend.get('volume_trend', '')} |
+| System Signal | {trend.get('buy_signal', 'Unknown')} | |
+| System Score | {trend.get('signal_score', 0)}/100 | |
 
-#### 系统分析理由
-**买入理由**：
-{chr(10).join('- ' + r for r in trend.get('signal_reasons', ['无'])) if trend.get('signal_reasons') else '- 无'}
+#### System Analysis Rationale
+**Buy Reasons**:
+{chr(10).join('- ' + r for r in trend.get('signal_reasons', ['None'])) if trend.get('signal_reasons') else '- None'}
 
-**风险因素**：
-{chr(10).join('- ' + r for r in trend.get('risk_factors', ['无'])) if trend.get('risk_factors') else '- 无'}
+**Risk Factors**:
+{chr(10).join('- ' + r for r in trend.get('risk_factors', ['None'])) if trend.get('risk_factors') else '- None'}
 """
-        
-        # 添加昨日对比数据
-        if 'yesterday' in context:
-            volume_change = context.get('volume_change_ratio', 'N/A')
-            prompt += f"""
-### 量价变化
-- 成交量较昨日变化：{volume_change}倍
-- 价格较昨日变化：{context.get('price_change_ratio', 'N/A')}%
+    
+    # Add yesterday's comparison data
+    if 'yesterday' in context:
+        volume_change = context.get('volume_change_ratio', 'N/A')
+        prompt += f"""
+### Price-Volume Changes
+- Volume change vs yesterday: {volume_change}x
+- Price change vs yesterday: {context.get('price_change_ratio', 'N/A')}%
 """
-        
-        # 添加新闻搜索结果（重点区域）
-        prompt += """
+    
+    # Add news search results (key section)
+    prompt += """
 ---
 
-## 📰 舆情情报
+## 📰 Sentiment Intelligence
 """
-        if news_context:
-            prompt += f"""
-以下是 **{stock_name}({code})** 近7日的新闻搜索结果，请重点提取：
-1. 🚨 **风险警报**：减持、处罚、利空
-2. 🎯 **利好催化**：业绩、合同、政策
-3. 📊 **业绩预期**：年报预告、业绩快报
-
+    if news_context:
+        prompt += f"""
+Below are news search results for **{stock_name}({code})** from the past 7 days. Please focus on extracting:
+1. 🚨 **Risk Alerts**: Share reductions, penalties, negative news
+2. 🎯 **Positive Catalysts**: Performance, contracts, policies
+3. 📊 **Earnings Expectations**: Annual report forecasts, performance previews
 ```
 {news_context}
 ```
 """
-        else:
-            prompt += """
-未搜索到该股票近期的相关新闻。请主要依据技术面数据进行分析。
+    else:
+        prompt += """
+No recent news found for this stock. Please analyze mainly based on technical data.
 """
 
-        # 注入缺失数据警告
-        if context.get('data_missing'):
-            prompt += """
-⚠️ **数据缺失警告**
-由于接口限制，当前无法获取完整的实时行情和技术指标数据。
-请 **忽略上述表格中的 N/A 数据**，重点依据 **【📰 舆情情报】** 中的新闻进行基本面和情绪面分析。
-在回答技术面问题（如均线、乖离率）时，请直接说明“数据缺失，无法判断”，**严禁编造数据**。
+    # Inject missing data warning
+    if context.get('data_missing'):
+        prompt += """
+⚠️ **Data Missing Warning**
+Due to API limitations, complete real-time quotes and technical indicator data cannot be obtained.
+Please **ignore N/A data in the tables above** and focus on **【📰 Sentiment Intelligence】** news for fundamental and sentiment analysis.
+When answering technical questions (such as MAs, deviation), please directly state "Data missing, cannot assess" and **DO NOT fabricate data**.
 """
 
-        # 明确的输出要求
-        prompt += f"""
+    # Clear output requirements
+    prompt += f"""
 ---
 
-## ✅ 分析任务
+## ✅ Analysis Task
 
-请为 **{stock_name}({code})** 生成【决策仪表盘】，严格按照 JSON 格式输出。
+Please generate a 【Decision Dashboard】 for **{stock_name}({code})**, strictly in JSON format.
 
-### ⚠️ 重要：股票名称确认
-如果上方显示的股票名称为"股票{code}"或不正确，请在分析开头**明确输出该股票的正确中文全称**。
+### ⚠️ Important: Stock Name Confirmation
+If the stock name shown above is "Stock{code}" or incorrect, please **clearly output the correct full Chinese name** at the beginning of your analysis.
 
-### 重点关注（必须明确回答）：
-1. ❓ 是否满足 MA5>MA10>MA20 多头排列？
-2. ❓ 当前乖离率是否在安全范围内（<5%）？—— 超过5%必须标注"严禁追高"
-3. ❓ 量能是否配合（缩量回调/放量突破）？
-4. ❓ 筹码结构是否健康？
-5. ❓ 消息面有无重大利空？（减持、处罚、业绩变脸等）
+### Key Focus (Must answer clearly):
+1. ❓ Does it meet the MA5>MA10>MA20 bullish alignment?
+2. ❓ Is the current deviation within safe range (<5%)? — Must mark "DO NOT chase high" if over 5%
+3. ❓ Is volume supporting (shrinking pullback/expanding breakout)?
+4. ❓ Is the chip structure healthy?
+5. ❓ Any major negative news? (Share reductions, penalties, earnings warnings, etc.)
 
-### 决策仪表盘要求：
-- **股票名称**：必须输出正确的中文全称（如"贵州茅台"而非"股票600519"）
-- **核心结论**：一句话说清该买/该卖/该等
-- **持仓分类建议**：空仓者怎么做 vs 持仓者怎么做
-- **具体狙击点位**：买入价、止损价、目标价（精确到分）
-- **检查清单**：每项用 ✅/⚠️/❌ 标记
+### Decision Dashboard Requirements:
+- **Stock Name**: Must output correct full Chinese name (e.g., "Kweichow Moutai" not "Stock600519")
+- **Core Conclusion**: One sentence stating buy/sell/wait
+- **Position Classification Advice**: What to do for those without positions vs those with positions
+- **Specific Entry Levels**: Buy price, stop-loss price, target price (accurate to cents)
+- **Checklist**: Mark each item with ✅/⚠️/❌
 
-请输出完整的 JSON 格式决策仪表盘。"""
-        
-        return prompt
+Please output the complete Decision Dashboard in JSON format."""
+
+    return prompt
     
     def _format_volume(self, volume: Optional[float]) -> str:
         """格式化成交量显示"""
