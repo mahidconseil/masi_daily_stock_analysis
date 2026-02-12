@@ -405,21 +405,21 @@ class MarketAnalyzer:
         return "\n".join(lines)
 
     def _build_review_prompt(self, overview: MarketOverview, news: List) -> str:
-        """构建复盘报告 Prompt"""
-        # 指数行情信息（简洁格式，不用emoji）
+        """Build market review report prompt"""
+        # Index market information (concise format, no emoji)
         indices_text = ""
         for idx in overview.indices:
             direction = "↑" if idx.change_pct > 0 else "↓" if idx.change_pct < 0 else "-"
             indices_text += f"- {idx.name}: {idx.current:.2f} ({direction}{abs(idx.change_pct):.2f}%)\n"
         
-        # 板块信息
+        # Sector information
         top_sectors_text = ", ".join([f"{s['name']}({s['change_pct']:+.2f}%)" for s in overview.top_sectors[:3]])
         bottom_sectors_text = ", ".join([f"{s['name']}({s['change_pct']:+.2f}%)" for s in overview.bottom_sectors[:3]])
         
-        # 新闻信息 - 支持 SearchResult 对象或字典
+        # News information - supports SearchResult objects or dictionaries
         news_text = ""
         for i, n in enumerate(news[:6], 1):
-            # 兼容 SearchResult 对象和字典
+            # Compatible with SearchResult objects and dictionaries
             if hasattr(n, 'title'):
                 title = n.title[:50] if n.title else ''
                 snippet = n.snippet[:100] if n.snippet else ''
@@ -428,66 +428,66 @@ class MarketAnalyzer:
                 snippet = n.get('snippet', '')[:100]
             news_text += f"{i}. {title}\n   {snippet}\n"
         
-        prompt = f"""你是一位专业的A/H/美股市场分析师，请根据以下数据生成一份简洁的大盘复盘报告。
-
-【重要】输出要求：
-- 必须输出纯 Markdown 文本格式
-- 禁止输出 JSON 格式
-- 禁止输出代码块
-- emoji 仅在标题处少量使用（每个标题最多1个）
-
----
-
-# 今日市场数据
-
-## 日期
-{overview.date}
-
-## 主要指数
-{indices_text if indices_text else "暂无指数数据（接口异常）"}
-
-## 市场概况
-- 上涨: {overview.up_count} 家 | 下跌: {overview.down_count} 家 | 平盘: {overview.flat_count} 家
-- 涨停: {overview.limit_up_count} 家 | 跌停: {overview.limit_down_count} 家
-- 两市成交额: {overview.total_amount:.0f} 亿元
-
-## 板块表现
-领涨: {top_sectors_text if top_sectors_text else "暂无数据"}
-领跌: {bottom_sectors_text if bottom_sectors_text else "暂无数据"}
-
-## 市场新闻
-{news_text if news_text else "暂无相关新闻"}
-
-{"注意：由于行情数据获取失败，请主要根据【市场新闻】进行定性分析和总结，不要编造具体的指数点位。" if not indices_text else ""}
-
----
-
-# 输出格式模板（请严格按此格式输出）
-
-## 📊 {overview.date} 大盘复盘
-
-### 一、市场总结
-（2-3句话概括今日市场整体表现，包括指数涨跌、成交量变化）
-
-### 二、指数点评
-（分析上证、深证、创业板等各指数走势特点）
-
-### 三、资金动向
-（解读成交额流向的含义）
-
-### 四、热点解读
-（分析领涨领跌板块背后的逻辑和驱动因素）
-
-### 五、后市展望
-（结合当前走势和新闻，给出明日市场预判）
-
-### 六、风险提示
-（需要关注的风险点）
-
----
-
-请直接输出复盘报告内容，不要输出其他说明文字。
-"""
+        prompt = f"""You are a professional A-share/H-share/US stock market analyst. Please generate a concise market review report based on the following data.
+    
+    【Important】Output Requirements:
+    - Must output in pure Markdown text format
+    - DO NOT output JSON format
+    - DO NOT output code blocks
+    - Emoji usage limited to titles only (maximum 1 per title)
+    
+    ---
+    
+    # Today's Market Data
+    
+    ## Date
+    {overview.date}
+    
+    ## Major Indices
+    {indices_text if indices_text else "No index data available (API error)"}
+    
+    ## Market Overview
+    - Rising: {overview.up_count} stocks | Falling: {overview.down_count} stocks | Flat: {overview.flat_count} stocks
+    - Limit Up: {overview.limit_up_count} stocks | Limit Down: {overview.limit_down_count} stocks
+    - Total Turnover: {overview.total_amount:.0f} billion yuan
+    
+    ## Sector Performance
+    Leading Gainers: {top_sectors_text if top_sectors_text else "No data available"}
+    Leading Losers: {bottom_sectors_text if bottom_sectors_text else "No data available"}
+    
+    ## Market News
+    {news_text if news_text else "No relevant news available"}
+    
+    {"Note: Due to market data retrieval failure, please conduct qualitative analysis and summary mainly based on 【Market News】. Do not fabricate specific index levels." if not indices_text else ""}
+    
+    ---
+    
+    # Output Format Template (Please strictly follow this format)
+    
+    ## 📊 {overview.date} Market Review
+    
+    ### I. Market Summary
+    (Summarize today's overall market performance in 2-3 sentences, including index movements and volume changes)
+    
+    ### II. Index Commentary
+    (Analyze the trend characteristics of Shanghai Composite, Shenzhen Component, ChiNext, and other indices)
+    
+    ### III. Capital Flow
+    (Interpret the implications of turnover direction)
+    
+    ### IV. Hot Spot Analysis
+    (Analyze the logic and driving factors behind leading gainers and losers)
+    
+    ### V. Market Outlook
+    (Provide tomorrow's market forecast based on current trends and news)
+    
+    ### VI. Risk Warnings
+    (Risk points that need attention)
+    
+    ---
+    
+    Please output the review report content directly without any additional explanatory text.
+    """
         return prompt
     
     def _generate_template_review(self, overview: MarketOverview, news: List) -> str:
