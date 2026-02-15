@@ -1219,35 +1219,31 @@ class NotificationService:
     }
 
     def _append_market_snapshot(self, lines: List[str], result: AnalysisResult) -> None:
-        snapshot = getattr(result, 'market_snapshot', None)
-        if not snapshot:
-            return
-
-        lines.extend([
-            "### 📈 当日行情",
-            "",
-            "| 收盘 | 昨收 | 开盘 | 最高 | 最低 | 涨跌幅 | 涨跌额 | 振幅 | 成交量 | 成交额 |",
-            "|------|------|------|------|------|-------|-------|------|--------|--------|",
-            f"| {snapshot.get('close', 'N/A')} | {snapshot.get('prev_close', 'N/A')} | "
-            f"{snapshot.get('open', 'N/A')} | {snapshot.get('high', 'N/A')} | "
-            f"{snapshot.get('low', 'N/A')} | {snapshot.get('pct_chg', 'N/A')} | "
-            f"{snapshot.get('change_amount', 'N/A')} | {snapshot.get('amplitude', 'N/A')} | "
-            f"{snapshot.get('volume', 'N/A')} | {snapshot.get('amount', 'N/A')} |",
-        ])
-
-        if "price" in snapshot:
-            raw_source = snapshot.get('source', 'N/A')
-            display_source = self._SOURCE_DISPLAY_NAMES.get(raw_source, raw_source)
-            lines.extend([
-                "",
-                "| 当前价 | 量比 | 换手率 | 行情来源 |",
-                "|-------|------|--------|----------|",
-                f"| {snapshot.get('price', 'N/A')} | {snapshot.get('volume_ratio', 'N/A')} | "
-                f"{snapshot.get('turnover_rate', 'N/A')} | {display_source} |",
-            ])
-
-        lines.append("")
-    
+       snapshot = getattr(result, 'market_snapshot', None)
+       if not snapshot:
+           return
+       lines.extend([
+           "### 📈 Today's Market",
+           "",
+           "| Close | Prev Close | Open | High | Low | Chg% | Chg Amt | Amplitude | Volume | Amount |",
+           "|------|------|------|------|------|-------|-------|------|--------|--------|",
+           f"| {snapshot.get('close', 'N/A')} | {snapshot.get('prev_close', 'N/A')} | "
+           f"{snapshot.get('open', 'N/A')} | {snapshot.get('high', 'N/A')} | "
+           f"{snapshot.get('low', 'N/A')} | {snapshot.get('pct_chg', 'N/A')} | "
+           f"{snapshot.get('change_amount', 'N/A')} | {snapshot.get('amplitude', 'N/A')} | "
+           f"{snapshot.get('volume', 'N/A')} | {snapshot.get('amount', 'N/A')} |",
+       ])
+       if "price" in snapshot:
+           raw_source = snapshot.get('source', 'N/A')
+           display_source = self._SOURCE_DISPLAY_NAMES.get(raw_source, raw_source)
+           lines.extend([
+               "",
+               "| Current Price | Vol Ratio | Turnover Rate | Data Source |",
+               "|-------|------|--------|----------|",
+               f"| {snapshot.get('price', 'N/A')} | {snapshot.get('volume_ratio', 'N/A')} | "
+               f"{snapshot.get('turnover_rate', 'N/A')} | {display_source} |",
+           ])
+       lines.append("")    
     def send_to_wechat(self, content: str) -> bool:
         """
         推送消息到企业微信机器人
