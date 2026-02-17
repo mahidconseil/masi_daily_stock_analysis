@@ -208,11 +208,16 @@ class StockAnalysisPipeline:
             trend_result: Optional[TrendAnalysisResult] = None
             try:
                 # 获取历史数据进行趋势分析
+                logger.info("Je suis là 0")
                 context = self.db.get_analysis_context(code)
+                logger.info("Je suis là 00")
                 if context and 'raw_data' in context:
                     import pandas as pd
                     raw_data = context['raw_data']
+                    logger.info("Je suis là 1")
+                    logger.info(f"raw data de l'analyse: {raw_data}")
                     if isinstance(raw_data, list) and len(raw_data) > 0:
+                        logger.info("Je suis là 2")
                         df = pd.DataFrame(raw_data)
                         trend_result = self.trend_analyzer.analyze(df, code)
                         logger.info(f"[{code}] 趋势分析: {trend_result.trend_status.value}, "
